@@ -6,6 +6,8 @@ error AuctionEnded();
 error NoMoney();
 error AuctionNotEnded();
 error CanNotBeZero();
+error NotWinner();
+error NotCreator();
 
 contract Auction {
     struct Auction {
@@ -33,12 +35,16 @@ contract Auction {
     modifier onlyCreator(uint256 _id) {
         if (_auctions[_id]._auctionCreator == msg.sender) {
             _;
+        } else {
+            revert NotCreator();
         }
     }
 
     modifier onlyWinner(uint256 _id) {
         if (_auctions[_id]._winner == msg.sender) {
             _;
+        } else {
+            revert NotWinner();
         }
     }
 
@@ -103,5 +109,9 @@ contract Auction {
 
     function auctionsInfo(uint256 _id) external view returns (Auction memory) {
         return _auctions[_id];
+    }
+
+    function nextId() external view returns(uint256) {
+        return _auctionId;
     }
 }
