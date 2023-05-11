@@ -1,117 +1,96 @@
-// SPDX-License-Identifier: MIT
+//SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-error AuctionNotStarted();
+error WrongTime();
+error AuctinoNotStarted();
 error AuctionEnded();
-error NoMoney();
-error AuctionNotEnded();
-error CanNotBeZero();
-error NotWinner();
-error NotCreator();
+error BidMore();
+error WinnerCanNotWithdraw();
+error NotEnoughMoney();
 
 contract Auction {
-    struct Auction {
-        uint256 _id;
-        uint256 _startingTime;
-        uint256 _endingTime;
-        uint256 _highestBid;
-        address _winner;
-        uint256 _biddingAmount;
-        address _auctionCreator;
-    }
+    address private _auctionOwner;
+    uint256 private _auctionStart;
+    uint256 private _auctionEnd;
+    address private _highestBidder;
+    uint256 private _highestBid;
+    bool private _isEnded;
+    mapping(address => uint256) private _pendingRefunds;
 
-    event AuctionCreated(
-        uint256 id,
-        uint256 started,
-        uint256 ended,
-        uint256 amount,
-        address auctionCreator
-    );
-    event AuctionClosed(uint256 id, uint256 higestBid, address winner);
-
-    mapping(uint256 => Auction) private _auctions;
-    uint256 private _auctionId;
-
-    modifier onlyCreator(uint256 _id) {
-        if (_auctions[_id]._auctionCreator == msg.sender) {
-            _;
-        } else {
-            revert NotCreator();
+    constructor(address _owner, uint256 _start, uint256 _time) {
+        _auctionOwner = _owner;
+        _auctionStart = _start;
+        _auctionEnd = _auctionStart._time;
+        if (block.timestamp < _auctionEnd) {
+            revert WrongTime();
         }
     }
 
-    modifier onlyWinner(uint256 _id) {
-        if (_auctions[_id]._winner == msg.sender) {
-            _;
-        } else {
-            revert NotWinner();
-        }
-    }
-
-    constructor() {
-        _auctionId = 0;
-    }
-
-    function createAuction(
-        uint256 startingTime,
-        uint256 endingTime,
-        uint256 biddingAmount
-    ) external {
-        if (biddingAmount == 0) {
-            revert CanNotBeZero();
-        }
-        _auctions[_auctionId] = Auction(
-            _auctionId,
-            startingTime,
-            endingTime,
-            0,
-            address(0),
-            1e17,
-            msg.sender
-        );
-        emit AuctionCreated(_auctionId, startingTime, endingTime, 1e17, msg.sender);
-        _auctionId++;
-    }
-
-    function endAuction(uint256 _id) external payable onlyWinner(_id) {
-        Auction memory auction = _auctions[_auctionId];
-        if (block.timestamp < auction._endingTime) {
-            revert AuctionNotEnded();
-        }
-        (bool success, ) = address(this).call{value: auction._highestBid}("");
-        require(success);
-        emit AuctionClosed(_id, auction._highestBid, auction._winner);
-    }
-
-    function bid(uint256 _id) external {
-        Auction storage auction = _auctions[_id];
-        if (block.timestamp < auction._startingTime) {
+    function bid() external payable {
+        if (block.timestamp < _auctionStart) {
             revert AuctionNotStarted();
         }
-        if (block.timestamp > auction._endingTime) {
+        if (block.timestamp > _auctionEnd) {
             revert AuctionEnded();
         }
-        auction._highestBid += 1e17;
-        auction._winner = msg.sender;
+        if (msg.value <= _highestBid) {
+            revert BidMore();
+        }
+        _pendingRefunds[msg.sender] += _highestBid;
+        _highestBidder = msg.sender;
+        _highestBid = msg.value;
     }
 
-    function claimMoney(uint256 _id) external onlyCreator(_id) {
-        Auction memory auction = _auctions[_id];
-        if (auction._highestBid == 0) {
-            revert NoMoney();
+    function withdraw() external {
+        if (msg.sender == _highestBidder) {
+            revert WinnerCanNotWithdraw();
         }
-        if (block.timestamp < auction._endingTime) {
-            revert AuctionNotEnded();
+        uint256 _amount = _pendingRefunds[msg.sender];
+        if (_amount == 0) {
+            revert NotEnoughMoney();
         }
-        (bool success, ) = msg.sender.call{value: auction._highestBid}("");
+        _pendingRefunds[msg.sender] = 0;
+        (bool success, ) = msg.sender.call{value: _amount}("");
         require(success);
     }
 
-    function auctionsInfo(uint256 _id) external view returns (Auction memory) {
-        return _auctions[_id];
+    function endAuction() external {
+        if (block.timestamp < _auctionEnd) {
+            revert AuctionNotEnded();
+        }
+        if (_ended == false) {
+            revert AuctionNotEnded();
+        }
+        _ended = true;
+        (bool success, ) = _highestBidder.call{value: _highestBid}("");
+        require(success);
     }
 
-    function nextId() external view returns(uint256) {
-        return _auctionId;
+    function auctionOwner() external view returns (address) {
+        return _auctionOwner;
+    }
+
+    function auctionStart() external view returns (uint256) {
+        return _auctionStart;
+    }
+
+    function auctionEnd() external view returns (uint256) {
+        return _auctionEnd;
+    }
+
+    function highestBidder() external view returns (uint256) {
+        return _highestBidder;
+    }
+
+    function highestBid() external view returns (uint256) {
+        return _highestBid;
+    }
+
+    function isEnded() external view returns (bool) {
+        return _ended;
+    }
+
+    function refunds(address _address) external view returns (uint256) {
+        return _pendingRefunds[_address];
     }
 }
