@@ -2,11 +2,12 @@
 pragma solidity ^0.8.13;
 
 error WrongTime();
-error AuctinoNotStarted();
+error AuctionNotStarted();
 error AuctionEnded();
 error BidMore();
 error WinnerCanNotWithdraw();
 error NotEnoughMoney();
+error AuctionNotEnded();
 
 contract Auction {
     address private _auctionOwner;
@@ -17,13 +18,10 @@ contract Auction {
     bool private _isEnded;
     mapping(address => uint256) private _pendingRefunds;
 
-    constructor(address _owner, uint256 _start, uint256 _time) {
+    constructor(address _owner, uint256 _start, uint256 _end) {
         _auctionOwner = _owner;
         _auctionStart = _start;
-        _auctionEnd = _auctionStart._time;
-        if (block.timestamp < _auctionEnd) {
-            revert WrongTime();
-        }
+        _auctionEnd = _end;
     }
 
     function bid() external payable {
@@ -58,10 +56,10 @@ contract Auction {
         if (block.timestamp < _auctionEnd) {
             revert AuctionNotEnded();
         }
-        if (_ended == false) {
+        if (_isEnded == false) {
             revert AuctionNotEnded();
         }
-        _ended = true;
+        _isEnded = true;
         (bool success, ) = _highestBidder.call{value: _highestBid}("");
         require(success);
     }
@@ -78,7 +76,7 @@ contract Auction {
         return _auctionEnd;
     }
 
-    function highestBidder() external view returns (uint256) {
+    function highestBidder() external view returns (address) {
         return _highestBidder;
     }
 
@@ -87,7 +85,7 @@ contract Auction {
     }
 
     function isEnded() external view returns (bool) {
-        return _ended;
+        return _isEnded;
     }
 
     function refunds(address _address) external view returns (uint256) {
