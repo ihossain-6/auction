@@ -26,7 +26,7 @@ slither :; slither ./src
 format :; prettier --write src/*.sol && prettier --write script/*.sol && prettier --write test/**/*.sol && prettier --write test/*.sol
 
 # solhint should be installed globally
-lint :; solhint src/**/*.sol && solhint src/*.sol
+lint :; solhint src/*.sol
 
 anvil :; anvil -m 'test test test test test test test test test test test junk'
 
