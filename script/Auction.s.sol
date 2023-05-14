@@ -7,7 +7,7 @@ import "../src/Auction.sol";
 contract DeployAuction is Script {
     function run() public {
         vm.startBroadcast();
-        new Auction();
+        new Auction(address(this), 1683989291, 100000);
         vm.stopBroadcast();
     }
 }
