@@ -34,7 +34,7 @@ contract Auction {
         if (msg.value <= _highestBid) {
             revert BidMore();
         }
-        _pendingRefunds[msg.sender] += _highestBid;
+        _pendingRefunds[msg.sender] += msg.value;
         _highestBidder = msg.sender;
         _highestBid = msg.value;
     }
@@ -56,11 +56,8 @@ contract Auction {
         if (block.timestamp < _auctionEnd) {
             revert AuctionNotEnded();
         }
-        if (_isEnded == false) {
-            revert AuctionNotEnded();
-        }
         _isEnded = true;
-        (bool success, ) = _highestBidder.call{value: _highestBid}("");
+        (bool success, ) = _auctionOwner.call{value: _highestBid}("");
         require(success);
     }
 
